@@ -4,7 +4,7 @@ use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Routing\Route;
-use Illuminate\Routing\Router;
+use Laravel\Lumen\Routing\Router;
 use Illuminate\Http\Request;
 use phpDocumentor\Reflection\DocBlock;
 use ReflectionClass;
@@ -65,9 +65,15 @@ class ApiDocsGenerator {
             return;
         }
 
+
+
         $endpoints = $this->getEndpoints();
 
+
+
         $this->generateDirectoryStructure();
+
+
         $this->generateHTMLCode($endpoints);
 
         return;
@@ -94,7 +100,6 @@ class ApiDocsGenerator {
                     continue;
                 }
             }
-
 
             $reflector = new ReflectionClass($class);
             $docBlock = new DocBlock($reflector);
@@ -204,6 +209,7 @@ class ApiDocsGenerator {
         */
 
         $this->updatePrefixAndSaveTemplate('includes', Config::get('apidocs.introduction_template_path'));
+        
 
         // let's generate the body
         $content = $this->createContentForTemplate($endpoints);
@@ -236,14 +242,12 @@ class ApiDocsGenerator {
 
     protected function updatePrefixAndSaveTemplate($type, $filepath)
     {
-
         $content = File::get($filepath);
 
         $content = str_replace('{prefix}', $this->dotPrefix, $content);
         $newPath = $this->viewPathForType($type) . basename($filepath);
 
         File::put($newPath, $content);
-
     }
 
     /**
@@ -261,6 +265,16 @@ class ApiDocsGenerator {
 
         $file = File::get($path);
         $file = str_replace('{prefix}', $this->dotPrefix, $file);
+
+        // foreach ($this->routes as $route) {
+        // }
+
+        $file = str_replace('{service_url1}', env('SERVICE_URL'),$file);
+        $file = str_replace('{service_url2}', env('SERVICE2_URL'),$file);
+        $file = str_replace('{service_url3}', env('SERVICE3_URL'),$file);
+        $file = str_replace('{service_url4}', env('SERVICE4_URL'),$file);
+        $file = str_replace('{service_url5}', env('SERVICE5_URL'),$file);
+
         $file = str_replace('{navigation}', $content['navigation'], $file);
         $file = str_replace('{body-content}', $content['body-content'], $file);
         $logo_path = str_replace('{prefix}', $this->dotPrefix, Config::get('apidocs.logo_path'));
@@ -536,20 +550,22 @@ class ApiDocsGenerator {
      * @param  \Illuminate\Routing\Route  $route
      * @return array
      */
-    protected function getRouteInformation(Route $route)
-    {
 
-        $uri = implode('|', $route->methods()).' '.$route->uri();
+    protected function getRouteInformation($route)
+    {
+        if(!isset($route['action']['uses'])){
+            return null;
+        }
 
         return $this->filterRoute(array(
-            'host'   => $route->domain(),
-            'uri'    => $uri,
-            'name'   => $route->getName(),
-            'action' => $route->getActionName(),
+            'host'   => env('APP_URL'),
+            'uri'    => substr($route['uri'], 1),
+            // 'name'   => $route->getName(),
+            'action' => isset($route['action']['uses']) ? $route['action']['uses'] : null,
             // 'before' => $this->getBeforeFilters($route),
             // 'after'  => $this->getAfterFilters($route),
-            'prefix' => $route->getPrefix(),
-            'method' => $route->methods()[0],
+            'prefix' => isset($route['action']['uses']) ? env('API_PREFIX') : 'xxx',
+            'method' => $route['method'],
         ));
     }
 
@@ -561,10 +577,9 @@ class ApiDocsGenerator {
      */
     protected function filterRoute(array $route)
     {
-
-        if (! str_contains($route['prefix'], $this->prefix)) {
-            return null;
-        }
+        // if (! str_contains($route['prefix'], $this->prefix)) {
+        //     return null;
+        // }
 
         return $route;
     }
